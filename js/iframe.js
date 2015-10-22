@@ -3,7 +3,7 @@ define(['coreJS/adapt'],function(Adapt) {
 	//quit if not in iframe
 	if ($("html", top.window.document).is("#adapt")) return;
 
-	//inject corrective styling and script to fix iframe sizing for everything and ios
+	//inject corrective styling and script to iframe window to fix iframe sizing for everything and ios
 	var meta = top.window.document.createElement("meta");
 	var style = top.window.document.createElement("style");
 	var script = top.window.document.createElement("script");
