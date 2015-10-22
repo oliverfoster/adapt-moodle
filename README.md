@@ -1,5 +1,5 @@
 # adapt-responsiveIFrame
-Extension to allow Adapt inside iframes 
+Extension to allow Adapt inside iframes.
 
 Not to be used in production. Beginning of a series of fixes to make this possible.
 
@@ -21,7 +21,7 @@ Not to be used in production. Beginning of a series of fixes to make this possib
 	    * don't use PLP as scrollTo doesn't work (or huge plp as scrolling won't work)
 	    * don't use huge notify feedback
 	    * don't use trickle
-	    * otherwise all good
+	    * otherwise all good - works perfectly on a desktop fullscreen iframe, all glitches are ios iframe hacks
 	    */
 
 
