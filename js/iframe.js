@@ -74,7 +74,7 @@ define([
 		window.outerWidth = newDimensions.width;
 
 		_.defer(function() {
-	  		$(window).resize();
+	  		$window.resize();
 	  	});
 	}
 
@@ -82,6 +82,7 @@ define([
 	var isIOS = (/iPad|iPhone|iPod/.test(navigator.platform)) || (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream);
 	var $pseudoHtml;
 	var $pseudoBody;
+	var $window = $(window);
 
 	if (isIOS && isInIframe) {
 		iOSSetupFixes();
@@ -148,7 +149,11 @@ define([
 		$pseudoHtml = $('<div id="pseudo-html"><div id="pseudo-body"></div></div>');
 		$pseudoBody = $pseudoHtml.find("#pseudo-body");
 		$("body").append($pseudoHtml);
-		$("#wrapper").appendTo($pseudoBody);			
+		$("#wrapper").appendTo($pseudoBody);
+
+		$pseudoHtml.on("scroll", function() {
+			$window.scroll();
+		})			
 	}
 
 	function iOSMoveNavigation() {
@@ -165,15 +170,21 @@ define([
 		var originalScrollTo = $.fn.scrollTo;
 		$.fn.scrollTo = function(target, duration, settings) {
 			if (this[0] === window) {
-				return originalScrollTo.apply($pseudoHtml, arguments);
+				var rtn = originalScrollTo.apply($pseudoHtml, arguments);
+				$window.scroll();
+				return rtn;
 			} else {
 				return originalScrollTo.apply(this, arguments);
 			}
 		};
 		var originalScrollTop = $.fn.scrollTop;
-		$.fn.scrollTop = function() {
+		$.fn.scrollTop = function(value) {
 			if (this[0] === window) {
-				return originalScrollTop.apply($pseudoHtml, arguments);
+				var rtn = originalScrollTop.apply($pseudoHtml, arguments);
+				if (value !== undefined) {
+					$window.scroll();
+				}
+				return rtn;
 			} else {
 				return originalScrollTop.apply(this, arguments);
 			}
@@ -190,6 +201,7 @@ define([
 		window.scrollTo = function(x,y) {
 			$pseudoHtml[0].scrollTop = y || 0;
 			$pseudoHtml[0].scrollLeft = x || 0;
+			$window.scroll();
 		};
 	}
 
