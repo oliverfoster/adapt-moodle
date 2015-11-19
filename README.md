@@ -5,7 +5,7 @@ Not to be used in production. Beginning of a series of fixes to make this possib
 
 1. Add to course. 
 2. Build
-3. Upload to an LMS or open index._iframe.html on your chosen device or brower
+3. Upload to an LMS or open index_iframe.html on your chosen device or brower
 4. Look at code
 5. Suggest improvements
 
