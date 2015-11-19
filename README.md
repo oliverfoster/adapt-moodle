@@ -1,5 +1,5 @@
 # adapt-responsiveIFrame
-Extension to allow Adapt inside full-screen iframes.
+Extension to allow Adapt inside full-screen iframes (mostly for moodle 'new window' option)
 
 Not to be used in production. Beginning of a series of fixes to make this possible.
 
