@@ -6,20 +6,20 @@ define([
 	var isInIframe = window.frameElement && window.frameElement.nodeName == "IFRAME";
 	var iframeDocument;
 	var iframeWindow;
-	var dynamicStyleTag;
+	var dynamicStyleTag; //to keep adapt sizes in order
 		
 	if (isInIframe) {
+		genericCaptureIFrameElements();
+		genericSetupResponsiveIFrameScriptAndStyle();
+		genericSetupResponsiveIFrameMessaging();	
+	}
+
+	function genericCaptureIFrameElements() {
 		iframeDocument = top.window.document;
 		iframeWindow = top.window;
-		setupResponsiveIFrame();
 	}
 
-	function setupResponsiveIFrame() {
-		setupResponsiveIFrameScriptAndStyle();
-		setupResponsiveIFrameMessaging();	
-	}
-
-	function setupResponsiveIFrameScriptAndStyle() {
+	function genericSetupResponsiveIFrameScriptAndStyle() {
 		//inject corrective styling and script to iframe window to fix iframe sizing for everything and ios
 		var meta = iframeDocument.createElement("meta");
 		var style = iframeDocument.createElement("style");
@@ -40,144 +40,157 @@ define([
 
 	}
 
-	function setupResponsiveIFrameMessaging() {
+	function genericSetupResponsiveIFrameMessaging() {
 		//force iframe content html size to match iframe size
-		var oldDimensions = {
-			height: 0,
-			width: 0
-		};
 
 		window.addEventListener("message", receiveMessage, false);
 		function receiveMessage(event) {
 		  switch (event.data) {
 		  case "resizeme":
-		  	console.log("resizeme message received");
-			var newDimensions = {
-				height: iframeWindow.innerHeight,
-				width: iframeWindow.innerWidth
-			};
-
-		  	if (oldDimensions.height == newDimensions.height && oldDimensions.width == newDimensions.width) return;
-
-			var dynamicStyle = "html { height:" + newDimensions.height + "px; width:" + newDimensions.width +"px; max-height:" + newDimensions.height + "px; max-width:" + newDimensions.width +"px; }";
-
-			$(dynamicStyleTag).html(dynamicStyle);
-
-			oldDimensions = newDimensions;
-			window.innerHeight = newDimensions.height;
-			window.innerWidth = newDimensions.width;
-			window.outerHeight = newDimensions.height;
-			window.outerWidth = newDimensions.width;
-
-			_.defer(function() {
-		  		$(window).resize();
-		  	});
-
+		  	genericAdaptContentResize();
 		  	break;
 		  }
 		}
 	}
 
+	var oldDimensions = { height: 0, width: 0 };
+	function genericAdaptContentResize() {
+		console.log("resizeme message received");
+		var newDimensions = {
+			height: iframeWindow.innerHeight,
+			width: iframeWindow.innerWidth
+		};
+
+	  	if (oldDimensions.height == newDimensions.height && oldDimensions.width == newDimensions.width) return;
+
+		var dynamicStyle = "html { height:" + newDimensions.height + "px; width:" + newDimensions.width +"px; max-height:" + newDimensions.height + "px; max-width:" + newDimensions.width +"px; }";
+
+		$(dynamicStyleTag).html(dynamicStyle);
+
+		oldDimensions = newDimensions;
+		window.innerHeight = newDimensions.height;
+		window.innerWidth = newDimensions.width;
+		window.outerHeight = newDimensions.height;
+		window.outerWidth = newDimensions.width;
+
+		_.defer(function() {
+	  		$(window).resize();
+	  	});
+	}
+
 
 	var isIOS = (/iPad|iPhone|iPod/.test(navigator.platform)) || (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream);
+	var $pseudoHtml;
+	var $pseudoBody;
+
 	if (isIOS && isInIframe) {
-		setupResponsiveIFrameIOS();
+		iOSSetupFixes();
 	}
 
-	function setupResponsiveIFrameIOS() {
+	function iOSSetupFixes () {
 		console.warn("FAKESCROLL: Is iOS in iFrame");
-		setupResponsiveIFrameIOSListeners();
-		setupResponsiveIFrameIOSCorrections();
-	}
 
-	function setupResponsiveIFrameIOSListeners () {
-		Adapt.on("pageView:postRender menuView:postRender", function(view) {
-			if (view && view.model && view.model.get("_id") !== Adapt.location._currentId) return;
-		});
+		//fix iframe attributes
+		iOSSetupIFrameAttributes();
+
+		//listen to orientation changes
+		iOSSetupOrientationChangeListener();
+
+		//reset scroll at interval
+		iOSSetupResetScrollInterval();
+
+		//add styling fixes
+		$("html").addClass("pseudohtml");
 
 		//wait for adapt to be ready
-		Adapt.on("app:dataReady", function() {
+		Adapt.on("app:dataReady", iOSSetupScrollContainers);
+		//wait for navigation to be rendered
+		Adapt.once("adapt:initialize", iOSMoveNavigation);
 
-	        //make sure scroll goes back to 0 on navigation
-	        Adapt.on("router:location", function() {
-	        	if (isInIframe) iframeDocument.getElementsByTagName("body")[0].scrollTop = 0;
-		    });
+		//hijack jquery window scroll handlers
+		iOSApplyJQueryWindowScrollHacks();
 
-		    $("html").addClass("lightbox-hack");
-        	var $scrollingContainer = $('<div class="scrolling-container"><div class="scrolling-inner body"></div></div>');
-            var $scrollingInner = $scrollingContainer.find(".scrolling-inner");
-        	$("body").append($scrollingContainer);
-        	$("#wrapper").appendTo($scrollingInner);
-
-        	var originalScrollTo = $.fn.scrollTo;
-        	$.fn.scrollTo = function(target, duration, settings) {
-        		if (this[0] === window) {
-        			return originalScrollTo.apply($(".scrolling-container"), arguments);
-        		} else {
-        			return originalScrollTo.apply(this, arguments);
-        		}
-        	};
-        	var originalScrollTop = $.fn.scrollTop;
-        	$.fn.scrollTop = function() {
-        		if (this[0] === window) {
-        			return originalScrollTop.apply($(".scrolling-container"), arguments);
-        		} else {
-        			return originalScrollTop.apply(this, arguments);
-        		}
-        	};
-            var jqueryOffset = $.fn.offset;
-            $.fn.offset = function() {
-                var offset = jqueryOffset.call(this);
-                //console.log("fetching offset", offset.top, offset.left);
-                var $stack = this.parents().add(this);
-                var $scrollParents = $stack.filter(".scrolling-container");
-                $scrollParents.each(function(index, item) {
-                    var $item = $(item);
-                    var scrolltop = parseInt($item.scrollTop());
-                    var scrollleft = parseInt($item.scrollLeft());
-                    offset.top += scrolltop;
-                    offset.left += scrollleft;
-                });
-                return offset;
-            };
-            window.scrollTo = function(x,y) {
-                //console.log("window scrollTo", x || 0, y || 0);
-                $(".scrolling-container")[0].scrollTop = y || 0;
-                $(".scrolling-container")[0].scrollLeft = x || 0;
-            };
-
-            //ios navigation fixed inside scrollable jump fix
-            var $navigationContainer = $('<div class="navigation-container"></div>');
-            $("body").prepend($navigationContainer);
-
-            Adapt.once("adapt:initialize", function() {
-                $(".navigation").prependTo($navigationContainer);
-            });
-		});
 	}
 
-	function setupResponsiveIFrameIOSCorrections() {
+	function iOSSetupIFrameAttributes() {
+		//force stop iframe scrolling
+		var iframe = iframeDocument.getElementsByTagName("iframe")[0];
+		iframe.setAttribute("scrolling", "no");
+	}
+
+	function iOSSetupOrientationChangeListener() {
 		//make sure iframe resizes properly on ios orientation change
 		$(iframeDocument.getElementsByTagName("body")[0]).attr({
 			 "onorientationchange": "resizeMe();"
 		});
+	}
 
+	function iOSSetupResetScrollInterval() {
+		//potentially unnecessary but here from legacy code
 		setInterval(function() {
 			//force any error scrolls to reset
 			iframeDocument.getElementsByTagName("body")[0].scrollTop = 0;
 			iframeWindow.scrollTop = 0;
 			window.document.getElementsByTagName("body")[0].scrollTop = 0;
 			window.scrollTop = 0;
+
+			//readjust height to force iframe to render properly
 			$("body").css("height", "auto");
 			_.defer(function(){
 				$("body").css("height", "100%");
 			});
 			
 		}, 500);
+	}
 
-		//force stop iframe scrolling
-		var iframe = iframeDocument.getElementsByTagName("iframe")[0];
-		iframe.setAttribute("scrolling", "no");
+	function iOSSetupScrollContainers() {
+		//move #wrapper into new container
+		$pseudoHtml = $('<div id="pseudo-html"><div id="pseudo-body"></div></div>');
+		$pseudoBody = $pseudoHtml.find("#pseudo-body");
+		$("body").append($pseudoHtml);
+		$("#wrapper").appendTo($pseudoBody);			
+	}
+
+	function iOSMoveNavigation() {
+		//ios navigation fixed inside scrollable jump fix
+		//create container
+		var $navigationContainer = $('<div class="navigation-container"></div>');
+		$("body").prepend($navigationContainer);
+		//move navigation to new continer
+		$(".navigation").prependTo($navigationContainer);
+	}
+
+	function iOSApplyJQueryWindowScrollHacks() {
+		//jquery scrolling fixes
+		var originalScrollTo = $.fn.scrollTo;
+		$.fn.scrollTo = function(target, duration, settings) {
+			if (this[0] === window) {
+				return originalScrollTo.apply($pseudoHtml, arguments);
+			} else {
+				return originalScrollTo.apply(this, arguments);
+			}
+		};
+		var originalScrollTop = $.fn.scrollTop;
+		$.fn.scrollTop = function() {
+			if (this[0] === window) {
+				return originalScrollTop.apply($pseudoHtml, arguments);
+			} else {
+				return originalScrollTop.apply(this, arguments);
+			}
+		};
+		var jqueryOffset = $.fn.offset;
+		$.fn.offset = function() {
+			var offset = jqueryOffset.call(this);
+			var scrolltop = parseInt($pseudoHtml.scrollTop());
+			var scrollleft = parseInt($pseudoHtml.scrollLeft());
+			offset.top += scrolltop;
+			offset.left += scrollleft;
+			return offset;
+		};
+		window.scrollTo = function(x,y) {
+			$pseudoHtml[0].scrollTop = y || 0;
+			$pseudoHtml[0].scrollLeft = x || 0;
+		};
 	}
 
 })
