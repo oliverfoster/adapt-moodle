@@ -24,7 +24,7 @@ define([
 		var meta = iframeDocument.createElement("meta");
 		var style = iframeDocument.createElement("style");
 		var script = iframeDocument.createElement("script");
-		$(style).html("html, body { overflow-x:hidden; overflow-y: hidden; } html, body, iframe {padding:0px;margin:0px;border:0px;height:100%;width:100%;} iframe {position:fixed; box-sizing: content-box;height:100%;width:100%;}");
+		$(style).html("html, body { overflow-x:hidden; overflow-y: hidden; } html, body, iframe {padding:0px;margin:0px;border:0px;height:100%;width:100%;} iframe { box-sizing: content-box;height:100%;width:100%;}");
 		$(script).html('setTimeout(resizeMe,1000);window.addEventListener("resize", resizeMe);function resizeMe() {var iframe = document.getElementsByTagName("iframe")[0]; iframe.style.width = window.innerWidth;iframe.style.height = window.innerHeight;console.log("resizeme sending message", window.innerHeight, window.innerWidth); iframe.contentWindow.postMessage("resizeme","*");}');
 		$(meta).attr({
 			"name": "viewport",
