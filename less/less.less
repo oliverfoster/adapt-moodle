@@ -1,9 +1,32 @@
-.drawer {
-	overflow-y: scroll !important;
-}
 .drawer-inner {
-	height: auto !important;
+	height:auto !important;
 }
-.trickle-button-inner {
-	position:relative;
+
+html.lightbox-hack {
+    position: absolute;
+    height:100%;
+    width: 100%;
+    overflow-y: hidden;
+    overflow-x: hidden;
+
+    body {
+        height: 100% !important;
+        overflow-y: hidden;
+    }
+
+    .scrolling-container {
+        height:100%;
+        overflow-y: scroll;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .navigation-container {
+        position: fixed;
+        overflow-y: scroll;
+        z-index: 500;
+        width: 100%;
+        .navigation {
+            position:relative !important;
+        }
+    }
 }
