@@ -9,6 +9,8 @@ Not to be used in production. Beginning of a series of fixes to make this possib
 4. Look at code
 5. Suggest improvements
 
+###Notes
+use trickle branch https://github.com/adaptlearning/adapt-contrib-trickle/tree/feature/moodle-iframe
 
 ###To Do
-- make trickle fix
+- get trickle fix merged
