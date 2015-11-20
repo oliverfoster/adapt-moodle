@@ -71,6 +71,16 @@ $(function() {
 		}
 	}
 
+	$(function() {
+		$.scrollBarSize = function() {
+			var scrollDiv = $('<div style="width: 100px;height: 100px;overflow: scroll;position: absolute;top: -9999px;"></div>');
+			$("body").append(scrollDiv);
+			var scrollBarSize = scrollDiv[0].offsetWidth - scrollDiv[0].clientWidth;
+			scrollDiv.remove();
+			return scrollBarSize;
+		};
+	});
+
 	var oldDimensions = { height: 0, width: 0 };
 	function genericAdaptContentResize() {
 		console.log("resizeme message received");
@@ -81,7 +91,9 @@ $(function() {
 
 	  	if (oldDimensions.height == newDimensions.height && oldDimensions.width == newDimensions.width) return;
 
-		var dynamicStyle = "html { height:" + newDimensions.height + "px; width:" + newDimensions.width +"px; max-height:" + newDimensions.height + "px; max-width:" + newDimensions.width +"px; }";
+	  	var scrollSize = $.scrollBarSize();
+
+		var dynamicStyle = "html { height:" + newDimensions.height + "px; width:" + (newDimensions.width-scrollSize) +"px; max-height:" + newDimensions.height + "px; max-width:" + (newDimensions.width-scrollSize) +"px; }";
 
 		$(moodleResponsiveIFrame.dynamicStyleTag).html(dynamicStyle);
 
