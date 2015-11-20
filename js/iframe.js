@@ -1,42 +1,60 @@
-define([
-	'coreJS/adapt'
-],function(Adapt) {
+var moodleResponsiveIFrame = {
+	$window: null,
+	isInIframe: null,
+	iframeDocument:null,
+	iframeWindow:null,
+	iframe:null,
+	dynamicStyleTag:null //to keep adapt sizes in order
+};
 
-	//quit if not in iframe
-	var isInIframe = window.frameElement && window.frameElement.nodeName == "IFRAME";
-	var iframeDocument;
-	var iframeWindow;
-	var dynamicStyleTag; //to keep adapt sizes in order
+$(function() {
+	//generic responsive iframe bits
+
+	moodleResponsiveIFrame.$window = $(window);
+	moodleResponsiveIFrame.isInIframe = window.frameElement && window.frameElement.nodeName == "IFRAME";
 		
-	if (isInIframe) {
+	if (moodleResponsiveIFrame.isInIframe) {
 		genericCaptureIFrameElements();
 		genericSetupResponsiveIFrameScriptAndStyle();
 		genericSetupResponsiveIFrameMessaging();	
+		
 	}
 
 	function genericCaptureIFrameElements() {
-		iframeDocument = top.window.document;
-		iframeWindow = top.window;
+		moodleResponsiveIFrame.iframeDocument = top.window.document;
+		moodleResponsiveIFrame.iframeWindow = top.window;
+		findMoodleIframe();
+	}
+
+	function findMoodleIframe() {
+		moodleResponsiveIFrame.iframe = moodleResponsiveIFrame.iframeDocument.getElementsByTagName("iframe")[0];
+		if (moodleResponsiveIFrame.iframe === undefined) {
+			moodleResponsiveIFrame.iframe = moodleResponsiveIFrame.iframeDocument.getElementById("scorm_object");
+		}
+		if (moodleResponsiveIFrame.iframe === undefined) {
+			throw "cannot find iframe";
+		}
+		return moodleResponsiveIFrame.iframe;
 	}
 
 	function genericSetupResponsiveIFrameScriptAndStyle() {
 		//inject corrective styling and script to iframe window to fix iframe sizing for everything and ios
-		var meta = iframeDocument.createElement("meta");
-		var style = iframeDocument.createElement("style");
-		var script = iframeDocument.createElement("script");
-		$(style).html("html, body { overflow-x:hidden; overflow-y: hidden; } html, body, iframe {padding:0px;margin:0px;border:0px;height:100%;width:100%;} iframe { box-sizing: content-box;height:100%;width:100%;}");
-		$(script).html('setTimeout(resizeMe,1000);window.addEventListener("resize", resizeMe);function resizeMe() {var iframe = document.getElementsByTagName("iframe")[0]; iframe.style.width = window.innerWidth;iframe.style.height = window.innerHeight;console.log("resizeme sending message", window.innerHeight, window.innerWidth); iframe.contentWindow.postMessage("resizeme","*");}');
+		var meta = moodleResponsiveIFrame.iframeDocument.createElement("meta");
+		var style = moodleResponsiveIFrame.iframeDocument.createElement("style");
+		var script = moodleResponsiveIFrame.iframeDocument.createElement("script");
+		$(style).html("html, body { overflow-x:hidden; overflow-y: hidden; } html, body, iframe {padding:0px;margin:0px;border:0px;height:100%;width:100%;} iframe { position: fixed !important; top:0px !important; left: 0px !important; box-sizing: content-box;height:100%;width:100%;}");
+		$(script).html('setTimeout(resizeMe,1000);setInterval(resizeMe,2000);\nwindow.addEventListener("resize", resizeMe);\nfunction resizeMe() {\nvar iframe = findMoodleIframe();\niframe.style.width = window.innerWidth+"px";\niframe.style.height = window.innerHeight+"px";\nconsole.log("resizeme sending message", window.innerHeight, window.innerWidth);\n iframe.contentWindow.postMessage("resizeme","*");\n}\nfunction findMoodleIframe() {\niframe = document.getElementsByTagName("iframe")[0];\nif (iframe === undefined) {\niframe = document.getElementById("scorm_object");\n}\nif (iframe === undefined) {\nthrow "cannot find iframe";\n}\nreturn iframe;\n}');
 		$(meta).attr({
 			"name": "viewport",
 			"content": "width=device-width, initial-scale=1.0, maximum-scale=1.0"
 		});
-		iframeDocument.getElementsByTagName("head")[0].appendChild(meta);
-		iframeDocument.getElementsByTagName("head")[0].appendChild(style);
-		iframeDocument.getElementsByTagName("head")[0].appendChild(script);
+		moodleResponsiveIFrame.iframeDocument.getElementsByTagName("head")[0].appendChild(meta);
+		moodleResponsiveIFrame.iframeDocument.getElementsByTagName("head")[0].appendChild(style);
+		moodleResponsiveIFrame.iframeDocument.getElementsByTagName("head")[0].appendChild(script);
 
 		//append dynamic styling to iframe content
-		dynamicStyleTag = window.document.createElement("style");
-		window.document.getElementsByTagName("head")[0].appendChild(dynamicStyleTag);
+		moodleResponsiveIFrame.dynamicStyleTag = window.document.createElement("style");
+		window.document.getElementsByTagName("head")[0].appendChild(moodleResponsiveIFrame.dynamicStyleTag);
 
 	}
 
@@ -57,15 +75,15 @@ define([
 	function genericAdaptContentResize() {
 		console.log("resizeme message received");
 		var newDimensions = {
-			height: iframeWindow.innerHeight,
-			width: iframeWindow.innerWidth
+			height: moodleResponsiveIFrame.iframeWindow.innerHeight,
+			width: moodleResponsiveIFrame.iframeWindow.innerWidth
 		};
 
 	  	if (oldDimensions.height == newDimensions.height && oldDimensions.width == newDimensions.width) return;
 
 		var dynamicStyle = "html { height:" + newDimensions.height + "px; width:" + newDimensions.width +"px; max-height:" + newDimensions.height + "px; max-width:" + newDimensions.width +"px; }";
 
-		$(dynamicStyleTag).html(dynamicStyle);
+		$(moodleResponsiveIFrame.dynamicStyleTag).html(dynamicStyle);
 
 		oldDimensions = newDimensions;
 		window.innerHeight = newDimensions.height;
@@ -74,17 +92,21 @@ define([
 		window.outerWidth = newDimensions.width;
 
 		_.defer(function() {
-	  		$window.resize();
+	  		moodleResponsiveIFrame.$window.resize();
 	  	});
 	}
+});
 
+define([
+	'coreJS/adapt'
+],function(Adapt) {
 
+	
 	var isIOS = (/iPad|iPhone|iPod/.test(navigator.platform)) || (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream);
 	var $pseudoHtml;
 	var $pseudoBody;
-	var $window = $(window);
 
-	if (isIOS && isInIframe) {
+	if (isIOS && moodleResponsiveIFrame.isInIframe) {
 		iOSSetupFixes();
 	}
 
@@ -115,13 +137,12 @@ define([
 
 	function iOSSetupIFrameAttributes() {
 		//force stop iframe scrolling
-		var iframe = iframeDocument.getElementsByTagName("iframe")[0];
-		iframe.setAttribute("scrolling", "no");
+		moodleResponsiveIFrame.iframe.setAttribute("scrolling", "no");
 	}
 
 	function iOSSetupOrientationChangeListener() {
 		//make sure iframe resizes properly on ios orientation change
-		$(iframeDocument.getElementsByTagName("body")[0]).attr({
+		$(moodleResponsiveIFrame.iframeDocument.getElementsByTagName("body")[0]).attr({
 			 "onorientationchange": "resizeMe();"
 		});
 	}
@@ -130,8 +151,8 @@ define([
 		//potentially unnecessary but here from legacy code
 		setInterval(function() {
 			//force any error scrolls to reset
-			iframeDocument.getElementsByTagName("body")[0].scrollTop = 0;
-			iframeWindow.scrollTop = 0;
+			moodleResponsiveIFrame.iframeDocument.getElementsByTagName("body")[0].scrollTop = 0;
+			moodleResponsiveIFrame.iframeWindow.scrollTop = 0;
 			window.document.getElementsByTagName("body")[0].scrollTop = 0;
 			window.scrollTop = 0;
 
@@ -152,7 +173,7 @@ define([
 		$("#wrapper").appendTo($pseudoBody);
 
 		$pseudoHtml.on("scroll", function() {
-			$window.scroll();
+			moodleResponsiveIFrame.$window.scroll();
 		})			
 	}
 
@@ -171,7 +192,7 @@ define([
 		$.fn.scrollTo = function(target, duration, settings) {
 			if (this[0] === window) {
 				var rtn = originalScrollTo.apply($pseudoHtml, arguments);
-				$window.scroll();
+				moodleResponsiveIFrame.$window.scroll();
 				return rtn;
 			} else {
 				return originalScrollTo.apply(this, arguments);
@@ -182,7 +203,7 @@ define([
 			if (this[0] === window) {
 				var rtn = originalScrollTop.apply($pseudoHtml, arguments);
 				if (value !== undefined) {
-					$window.scroll();
+					moodleResponsiveIFrame.$window.scroll();
 				}
 				return rtn;
 			} else {
@@ -201,7 +222,7 @@ define([
 		window.scrollTo = function(x,y) {
 			$pseudoHtml[0].scrollTop = y || 0;
 			$pseudoHtml[0].scrollLeft = x || 0;
-			$window.scroll();
+			moodleResponsiveIFrame.$window.scroll();
 		};
 	}
 
